@@ -101,31 +101,6 @@ const METRIC_CONFIG: Record<
   },
 };
 
-// ---------------------------------------------------------------------------
-// Heatmap weight helpers
-// ---------------------------------------------------------------------------
-
-function recordToHeatPoint(record: MeasurementRecord, mode: MetricLayer) {
-  if (!record.location) return null;
-
-  let weight = 0.5;
-  if (mode === 'latency') {
-    const avg = record.ping?.[0]?.avg;
-    weight = avg !== undefined && avg !== null ? Math.min(1, Math.max(0.1, avg / 150)) : 0.5;
-  } else if (mode === 'signal') {
-    const score = record.network.rssiScore;
-    weight = score !== null ? Math.max(0.1, 1 - score / 100) : 0.5;
-  } else if (mode === 'speed') {
-    const dl = record.throughput?.downloadMbps;
-    weight = dl !== null && dl !== undefined ? Math.max(0.1, 1 - Math.min(1, dl / 50)) : 0.5;
-  }
-
-  return {
-    latitude: record.location.latitude,
-    longitude: record.location.longitude,
-    weight,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Selected marker detail panel
@@ -141,7 +116,6 @@ function MeasurementDetail({
   const ping = record.ping?.[0];
   const qos = record.qosScore;
   const quality = getMetricQuality(record, activeMetric);
-  const qualityColor = QualityColors[quality];
 
   return (
     <View style={styles.detail}>
@@ -311,14 +285,6 @@ export default function MapScreen() {
       ? PersistenceService.filterRecords(located, { center, radiusMeters: 5_000 })
       : located;
   }, [records, radiusFilter]);
-
-  const heatPoints = useMemo(
-    () =>
-      withLocation
-        .map(r => recordToHeatPoint(r, activeMetric))
-        .filter((p): p is { latitude: number; longitude: number; weight: number } => p !== null),
-    [withLocation, activeMetric],
-  );
 
   const initialRegion = useMemo<Region>(() => {
     if (withLocation.length > 0 && withLocation[0].location) {

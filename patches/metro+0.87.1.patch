@@ -1,0 +1,32 @@
+diff --git a/node_modules/metro/src/node-haste/DependencyGraph.js b/node_modules/metro/src/node-haste/DependencyGraph.js
+index 3a76e63..c5dd9ef 100644
+--- a/node_modules/metro/src/node-haste/DependencyGraph.js
++++ b/node_modules/metro/src/node-haste/DependencyGraph.js
+@@ -26,6 +26,9 @@ function _interopRequireDefault(e) {
+ const { createActionStartEntry, createActionEndEntry, log } = _metroCore.Logger;
+ const NULL_PLATFORM = Symbol();
+ function getOrCreateMap(map, field) {
++  if (!map) {
++    return new Map();
++  }
+   let subMap = map.get(field);
+   if (!subMap) {
+     subMap = new Map();
+@@ -39,6 +42,7 @@ class DependencyGraph extends _nodeEvents.default {
+   constructor(config, options) {
+     super();
+     this._config = config;
++    this._resolutionCache = new Map();
+     const { hasReducedPerformance, watch } = options ?? {};
+     const initializingMetroLogEntry = log(
+       createActionStartEntry("Initializing Metro"),
+@@ -190,7 +194,8 @@ class DependencyGraph extends _nodeEvents.default {
+     const targetKey =
+       to + (dependency.data.isESMImport === true ? "\0esm" : "\0cjs");
+     const platformKey = platform ?? NULL_PLATFORM;
+-    const mapByResolverOptions = this._resolutionCache;
++    const mapByResolverOptions =
++      this._resolutionCache ?? (this._resolutionCache = new Map());
+     const mapByOrigin = getOrCreateMap(
+       mapByResolverOptions,
+       resolverOptionsKey,

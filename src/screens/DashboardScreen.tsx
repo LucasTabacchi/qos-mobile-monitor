@@ -467,30 +467,30 @@ export default function DashboardScreen() {
             </View>
           </View>
         </Card>
-
-        {/* ── Primary MD3 Action Button ── */}
-        <View style={styles.actionContainer}>
-          <Button
-            size="lg"
-            variant={isMeasuring ? 'secondary' : 'default'}
-            disabled={isMeasuring}
-            onPress={handleMeasureNow}
-            iconLeft={
-              !isMeasuring ? (
-                <Play size={20} color={Colors.text.inverse} fill={Colors.text.inverse} />
-              ) : (
-                <ActivityIndicator color={Colors.accent.primary} size="small" />
-              )
-            }
-            style={styles.measureButton}>
-            {measureState.status === 'done'
-              ? '¡Listo!'
-              : isMeasuring
-              ? 'Midiendo calidad...'
-              : 'Medir ahora'}
-          </Button>
-        </View>
       </ScrollView>
+
+      {/* ── Primary MD3 Action Button (Sticky Footer) ── */}
+      <View style={styles.actionContainer}>
+        <Button
+          size="lg"
+          variant={isMeasuring ? 'secondary' : 'default'}
+          disabled={isMeasuring}
+          onPress={handleMeasureNow}
+          iconLeft={
+            !isMeasuring ? (
+              <Play size={20} color={Colors.text.inverse} fill={Colors.text.inverse} />
+            ) : (
+              <ActivityIndicator color={Colors.accent.primary} size="small" />
+            )
+          }
+          style={styles.measureButton}>
+          {measureState.status === 'done'
+            ? '¡Listo!'
+            : isMeasuring
+            ? 'Midiendo calidad...'
+            : 'Medir ahora'}
+        </Button>
+      </View>
     </SafeAreaView>
   );
 }
@@ -928,9 +928,14 @@ const styles = StyleSheet.create({
     color: Colors.border.default,
   },
 
-  // Action Button
+  // Action Button (Sticky Footer)
   actionContainer: {
-    marginTop: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.sm,
+    backgroundColor: Colors.bg.primary,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.border.subtle,
   },
   measureButton: {
     width: '100%',

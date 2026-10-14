@@ -80,25 +80,31 @@ async function measureUpload(
 
   onProgress?.(10);
 
-  // Generate payload on JS side (React Native doesn't stream outbound bodies
-  // natively, so we use a single buffer approach, acceptable for ≤ 50 MB)
-  const payload = new Uint8Array(bytes).fill(0x55);
-  const t0 = Date.now();
-
+  // Generate payload as ASCII string. Sending a string avoids React Native's
+  // internal binaryToBase64() bridge conversion, which blocks the JS thread
+  // and distorts upload speed metrics.
+  const payload = 'U'.repeat(bytes);
   onProgress?.(30);
+
+  const t0 = Date.now();
 
   try {
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
+      headers: { 'Content-Type': 'text/plain' },
       body: payload,
     });
 
     if (!response.ok) return null;
 
+    onProgress?.(90);
+    const data = await response.json();
+    const actualBytes = typeof data?.received === 'number' && data.received > 0 ? data.received : bytes;
+
     const elapsed = (Date.now() - t0) / 1000;
-    const bits = bytes * 8;
     onProgress?.(100);
+
+    const bits = actualBytes * 8;
     return bits / elapsed / 1_000_000; // Mbps
   } catch {
     return null;

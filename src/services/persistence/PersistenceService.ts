@@ -7,7 +7,7 @@
  */
 
 import SQLite from 'react-native-sqlite-storage';
-import type { MeasurementFilter, MeasurementRecord } from '../../types';
+import type { MeasurementFilter, MeasurementRecord, NetworkType } from '../../types';
 import RNFS from 'react-native-fs';
 import { useHistoryStore } from '../../store';
 
@@ -116,10 +116,28 @@ async function loadByRange(
   networkType?: string,
 ): Promise<MeasurementRecord[]> {
   await init();
-  const sql = networkType
-    ? `SELECT * FROM measurements WHERE timestamp >= ? AND timestamp <= ? AND network_type = ? ORDER BY timestamp DESC`
-    : `SELECT * FROM measurements WHERE timestamp >= ? AND timestamp <= ? ORDER BY timestamp DESC`;
-  const params = networkType ? [fromTs, toTs, networkType] : [fromTs, toTs];
+  let sql = 'SELECT * FROM measurements WHERE timestamp >= ? AND timestamp <= ?';
+  const params: any[] = [fromTs, toTs];
+  if (networkType && networkType !== 'ALL') {
+    const norm = networkType.toUpperCase().trim();
+    if (norm === '4G' || norm === 'LTE') {
+      sql += ' AND (UPPER(network_type) = ? OR UPPER(network_type) = ?)';
+      params.push('4G', 'LTE');
+    } else if (norm === '5G') {
+      sql += ' AND (UPPER(network_type) = ? OR UPPER(network_type) = ?)';
+      params.push('5G', 'NR');
+    } else if (norm === '3G') {
+      sql += ' AND (UPPER(network_type) = ? OR UPPER(network_type) = ? OR UPPER(network_type) = ?)';
+      params.push('3G', 'HSPA', 'UMTS');
+    } else if (norm === '2G') {
+      sql += ' AND (UPPER(network_type) = ? OR UPPER(network_type) = ? OR UPPER(network_type) = ?)';
+      params.push('2G', 'EDGE', 'GPRS');
+    } else {
+      sql += ' AND UPPER(network_type) = ?';
+      params.push(norm);
+    }
+  }
+  sql += ' ORDER BY timestamp DESC';
   const [results] = await db!.executeSql(sql, params);
   const records: MeasurementRecord[] = [];
   for (let i = 0; i < results.rows.length; i++) {
@@ -128,13 +146,55 @@ async function loadByRange(
   return records;
 }
 
+export function isNetworkTypeMatch(
+  recordType: NetworkType | string | undefined | null,
+  filterType: string,
+): boolean {
+  if (!recordType) return false;
+  const normRecord = recordType.toUpperCase().trim();
+  const normFilter = filterType.toUpperCase().trim();
+
+  if (normFilter === 'ALL' || normFilter === '') return true;
+
+  if (normFilter === '4G' || normFilter === 'LTE') {
+    return normRecord === '4G' || normRecord === 'LTE';
+  }
+  if (normFilter === '5G') {
+    return normRecord === '5G' || normRecord === 'NR';
+  }
+  if (normFilter === '3G') {
+    return (
+      normRecord === '3G' ||
+      normRecord === 'HSPA' ||
+      normRecord === 'HSDPA' ||
+      normRecord === 'HSUPA' ||
+      normRecord === 'HSPAP' ||
+      normRecord === 'UMTS'
+    );
+  }
+  if (normFilter === '2G') {
+    return normRecord === '2G' || normRecord === 'EDGE' || normRecord === 'GPRS';
+  }
+  if (normFilter === 'WIFI') {
+    return normRecord === 'WIFI' || normRecord === 'WI-FI';
+  }
+
+  return normRecord === normFilter;
+}
+
 export function filterRecords(records: MeasurementRecord[], filter: MeasurementFilter): MeasurementRecord[] {
   return records.filter(record => {
-    if (filter.networkType && record.network.type !== filter.networkType) return false;
-    if (filter.fromTimestamp && record.timestamp < filter.fromTimestamp) return false;
-    if (filter.toTimestamp && record.timestamp > filter.toTimestamp) return false;
-    if (filter.center && filter.radiusMeters != null) {
-      if (!record.location) return false;
+    if (filter.networkType && !isNetworkTypeMatch(record.network?.type, filter.networkType)) {
+      return false;
+    }
+    if (filter.fromTimestamp != null && record.timestamp < filter.fromTimestamp) {
+      return false;
+    }
+    if (filter.toTimestamp != null && record.timestamp > filter.toTimestamp) {
+      return false;
+    }
+    if (filter.radiusMeters != null) {
+      if (!filter.center || !record.location) return false;
       if (distanceMeters(filter.center, record.location) > filter.radiusMeters) return false;
     }
     return true;
@@ -256,5 +316,6 @@ export const PersistenceService = {
   recordsToCsv,
   recordsToJson: (records: MeasurementRecord[]) => JSON.stringify(records, null, 2),
   filterRecords,
+  isNetworkTypeMatch,
   exportFile,
 };

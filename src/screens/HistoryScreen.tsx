@@ -238,7 +238,20 @@ export default function HistoryScreen() {
 
           <TouchableOpacity
             style={[styles.topPill, areaFilter === '5KM' && styles.topPillActive]}
-            onPress={() => setAreaFilter(prev => prev === 'ALL' ? '5KM' : 'ALL')}>
+            onPress={() => {
+              if (areaFilter === 'ALL') {
+                const hasAnyLocation = records.some(r => r.location != null);
+                if (!hasAnyLocation) {
+                  Alert.alert(
+                    'Sin datos de ubicación',
+                    'No hay mediciones registradas con coordenadas GPS para filtrar por zona.',
+                  );
+                }
+                setAreaFilter('5KM');
+              } else {
+                setAreaFilter('ALL');
+              }
+            }}>
             <MapPin size={14} color={areaFilter === '5KM' ? Colors.accent.secondary : Colors.text.secondary} />
             <Text style={[styles.topPillText, areaFilter === '5KM' && styles.topPillTextActive]}>
               {areaFilter === '5KM' ? 'Zona: 5 km' : 'Todas las zonas'}
